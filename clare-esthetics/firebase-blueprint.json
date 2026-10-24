@@ -1,0 +1,88 @@
+{
+  "entities": {
+    "Service": {
+      "title": "Service",
+      "description": "A treatment or service offered by the esthetician.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the service." },
+        "description": { "type": "string", "description": "Detailed description of the service." },
+        "price": { "type": "number", "description": "Price in USD." },
+        "duration": { "type": "number", "description": "Duration in minutes." },
+        "category": { "type": "string", "description": "Category like 'Facials', 'Peels', etc." },
+        "imageUrl": { "type": "string", "description": "URL to a representative image." }
+      },
+      "required": ["name", "price", "duration", "category"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "A booking made by a client.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID of the client." },
+        "serviceId": { "type": "string", "description": "ID of the booked service." },
+        "date": { "type": "string", "format": "date-time", "description": "Scheduled start time." },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled", "completed"] },
+        "notes": { "type": "string", "description": "Optional notes from the client." }
+      },
+      "required": ["userId", "serviceId", "date", "status"]
+    },
+    "Testimonial": {
+      "title": "Testimonial",
+      "description": "Client feedback and reviews.",
+      "type": "object",
+      "properties": {
+        "clientName": { "type": "string" },
+        "clientPhoto": { "type": "string" },
+        "content": { "type": "string" },
+        "rating": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["clientName", "content", "rating"]
+    },
+    "GalleryItem": {
+      "title": "Gallery Item",
+      "description": "Showcase of work.",
+      "type": "object",
+      "properties": {
+        "imageUrl": { "type": "string" },
+        "caption": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["imageUrl"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stored information for authenticated users.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["client", "admin"] }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "services/{serviceId}": {
+      "schema": "Service",
+      "description": "Master list of services."
+    },
+    "appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "All client bookings."
+    },
+    "testimonials/{testimonialId}": {
+      "schema": "Testimonial",
+      "description": "Public client reviews."
+    },
+    "gallery/{itemId}": {
+      "schema": "GalleryItem",
+      "description": "Portfolio of past work."
+    },
+    "users/{uid}": {
+      "schema": "UserProfile",
+      "description": "User account data."
+    }
+  }
+}

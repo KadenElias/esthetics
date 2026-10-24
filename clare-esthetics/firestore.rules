@@ -1,0 +1,119 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      // In a real app, you'd check a dedicated 'admins' collection or a field in 'users'
+      // For this app, we'll check the 'role' field in the 'users' collection.
+      return isSignedIn() && getUserData().role == 'admin';
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Services ---
+    match /services/{serviceId} {
+      allow read: if true; // Publicly readable
+      allow write: if isAdmin();
+      
+      function isValidService(data) {
+        return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+               data.description is string && data.description.size() <= 1000 &&
+               data.price is number && data.price >= 0 &&
+               data.duration is number && data.duration > 0 &&
+               data.category is string;
+      }
+
+      allow create: if isAdmin() && isValidService(incoming());
+      allow update: if isAdmin() && isValidService(incoming());
+    }
+
+    // --- Appointments ---
+    match /appointments/{appointmentId} {
+      // Clients see their own, admins see all
+      allow get: if isOwner(existing().userId) || isAdmin();
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+
+      function isValidAppointment(data) {
+        return data.userId == request.auth.uid && // Must own the record
+               data.serviceId is string &&
+               data.date is string && // ISO string validation for simplicity
+               data.status in ['pending', 'confirmed', 'cancelled', 'completed'] &&
+               (data.get('notes', '') is string);
+      }
+
+      allow create: if isSignedIn() && isValidAppointment(incoming()) && 
+                    exists(/databases/$(database)/documents/services/$(incoming().serviceId));
+      
+      allow update: if isSignedIn() && (
+        // Client can cancel their own
+        (isOwner(existing().userId) && 
+         incoming().diff(existing()).affectedKeys().hasOnly(['status', 'notes']) &&
+         incoming().status == 'cancelled') ||
+        // Admin can update everything
+        isAdmin()
+      );
+    }
+
+    // --- Testimonials ---
+    match /testimonials/{testimonialId} {
+      allow read: if true;
+      allow create: if isSignedIn() && 
+                    incoming().clientName is string && 
+                    incoming().content is string &&
+                    incoming().rating is number && incoming().rating >= 1 && incoming().rating <= 5;
+      allow update, delete: if isAdmin();
+    }
+
+    // --- Gallery ---
+    match /gallery/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- Users ---
+    match /users/{uid} {
+      allow get: if isOwner(uid) || isAdmin();
+      allow list: if isAdmin();
+      
+      function isValidUser(data) {
+        return data.email is string &&
+               data.role in ['client', 'admin'] &&
+               (data.get('displayName', '') is string);
+      }
+
+      allow create: if isOwner(uid) && 
+                    incoming().role == 'client' && // Default role
+                    isValidUser(incoming());
+      
+      allow update: if (isOwner(uid) && incoming().role == existing().role && isValidUser(incoming())) ||
+                    isAdmin();
+    }
+  }
+}

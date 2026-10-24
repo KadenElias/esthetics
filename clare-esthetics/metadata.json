@@ -1,0 +1,8 @@
+{
+  "name": "Lumière Esthetics",
+  "description": "Premium skincare and aesthetic services scheduling platform with online booking, gallery, and client testimonials.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
